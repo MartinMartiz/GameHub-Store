@@ -1,183 +1,80 @@
-// ==========================================
-// LÓGICA DEL CARRITO DE COMPRAS (EP1)
-// ==========================================
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GameHub Store - Carrito de Compras</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header>
+    <h1>GameHub Store</h1>
+    <nav>
+      <ul>
+        <li><a href="index.html">Inicio</a></li>
+        <li><a href="catalogo.html">Catálogo</a></li>
+        <li><a href="carrito.html">Carrito</a></li>
+        <li><a href="checkout.html">Checkout</a></li>
+        <li><a href="mis-ordenes.html">Mis Órdenes</a></li>
+      </ul>
+    </nav>
+  </header>
 
-// Obtener carrito guardado en localStorage o iniciar vacío
-function obtenerCarrito() {
-  return JSON.parse(localStorage.getItem("carrito_gamehub")) || [];
-}
+  <main style="padding: 2rem; max-width: 1200px; margin: 0 auto;">
+    <h2>Carrito de Compras</h2>
 
-function guardarCarrito(carrito) {
-  localStorage.setItem("carrito_gamehub", JSON.stringify(carrito));
-}
+    <section id="carrito-vacio" style="display: none; text-align: center; padding: 3rem 0;">
+      <p style="font-size: 1.2rem; margin-bottom: 1rem;">Tu carrito de compras está vacío.</p>
+      <a href="catalogo.html" class="boton-primario" style="text-decoration: none; display: inline-block;">Ver Catálogo</a>
+    </section>
 
-// Función global para agregar productos desde cualquier vista (ej: Inicio o Catálogo)
-function agregarAlCarrito(idProducto, cantidad = 1) {
-  const prod = productos.find(p => p.id === idProducto);
-  if (!prod) return;
+    <div id="resumen-carrito" style="display: flex; gap: 2rem; flex-wrap: wrap; margin-top: 1.5rem;">
+      <section style="flex: 2; min-width: 300px;" id="lineas-carrito">
+      </section>
 
-  let carrito = obtenerCarrito();
-  const index = carrito.findIndex(item => item.id === idProducto);
+      <aside style="flex: 1; min-width: 280px; background-color: var(--color-superficie); padding: 1.5rem; border-radius: var(--radio-borde); height: fit-content;">
+        <h3>Resumen de la Compra</h3>
+        <hr style="border-color: var(--color-fondo); margin: 1rem 0;">
 
-  if (index !== -1) {
-    const nuevaCantidad = carrito[index].cantidad + cantidad;
-    if (nuevaCantidad > prod.stock) {
-      alert(`No puedes agregar más de ${prod.stock} unidades (Stock disponible).`);
-      return;
-    }
-    carrito[index].cantidad = nuevaCantidad;
-  } else {
-    if (cantidad > prod.stock) {
-      alert(`No puedes agregar más de ${prod.stock} unidades (Stock disponible).`);
-      return;
-    }
-    carrito.push({
-      id: prod.id,
-      nombre: prod.nombre,
-      precio: prod.precioOferta ? prod.precioOferta : prod.precio,
-      imagen: prod.imagen,
-      stock: prod.stock,
-      cantidad: cantidad
-    });
-  }
-
-  guardarCarrito(carrito);
-  alert(`"${prod.nombre}" fue agregado al carrito.`);
-}
-
-// Renderizado de la vista de Carrito
-function renderizarCarrito() {
-  const contenedorLineas = document.getElementById("lineas-carrito");
-  const contenedorResumen = document.getElementById("resumen-carrito");
-  const mensajeVacio = document.getElementById("carrito-vacio");
-
-  if (!contenedorLineas || !contenedorResumen || !mensajeVacio) return;
-
-  const carrito = obtenerCarrito();
-
-  if (carrito.length === 0) {
-    contenedorLineas.innerHTML = "";
-    contenedorResumen.style.display = "none";
-    mensajeVacio.style.display = "block";
-    return;
-  }
-
-  mensajeVacio.style.display = "none";
-  contenedorResumen.style.display = "block";
-  contenedorLineas.innerHTML = "";
-
-  carrito.forEach(item => {
-    const subtotalLinea = item.precio * item.cantidad;
-    const fila = document.createElement("article");
-    fila.classList.add("tarjeta-producto");
-    fila.style.marginBottom = "1rem";
-
-    fila.innerHTML = `
-      <div style="display: flex; gap: 1rem; align-items: center; justify-content: space-between; flex-wrap: wrap;">
-        <img src="${item.imagen}" alt="${item.nombre}" style="width: 80px; height: auto;">
-        <div style="flex: 1; min-width: 200px;">
-          <h3>${item.nombre}</h3>
-          <p>Precio Unitario: $${item.precio.toLocaleString("es-CL")}</p>
+        <div style="margin-bottom: 1.5rem;">
+          <label for="input-cupon" style="display: block; margin-bottom: 0.5rem;">¿Tienes un cupón?</label>
+          <div style="display: flex; gap: 0.5rem;">
+            <input type="text" id="input-cupon" placeholder="Ej: GAMER10" style="padding: 0.5rem; flex: 1; border-radius: var(--radio-borde); border: 1px solid var(--color-fondo);">
+            <button class="boton-primario" type="button" onclick="aplicarCuponDescuento()">Aplicar</button>
+          </div>
+          <p id="mensaje-cupon" class="mensaje-error" style="margin-top: 0.5rem;"></p>
         </div>
-        <div>
-          <label for="cant-${item.id}">Cantidad:</label>
-          <input type="number" id="cant-${item.id}" value="${item.cantidad}" min="1" max="${item.stock}" 
-                 onchange="actualizarCantidad(${item.id}, this.value)" style="width: 60px; padding: 0.3rem;">
+
+        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+          <span>Subtotal:</span>
+          <span id="resumen-subtotal">$0</span>
         </div>
-        <p><strong>Subtotal: $${subtotalLinea.toLocaleString("es-CL")}</strong></p>
-        <button class="boton-primario" onclick="eliminarDelCarrito(${item.id})" style="background-color: var(--color-error); color: white;">
-          Quitar
-        </button>
-      </div>
-    `;
+        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; color: var(--color-acento);">
+          <span>Descuento:</span>
+          <span id="resumen-descuento">-$0</span>
+        </div>
+        <hr style="border-color: var(--color-fondo); margin: 1rem 0;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 1.5rem; font-size: 1.2rem; font-weight: bold;">
+          <span>Total:</span>
+          <span id="resumen-total">$0</span>
+        </div>
 
-    contenedorLineas.appendChild(fila);
-  });
+        <div style="display: flex; flex-direction: column; gap: 0.8rem;">
+          <a href="checkout.html" class="boton-primario" style="text-align: center; text-decoration: none;">Ir al Checkout</a>
+          <button type="button" onclick="vaciarCarrito()" style="background: transparent; color: var(--color-error); border: 1px solid var(--color-error); padding: 0.5rem; border-radius: var(--radio-borde); cursor: pointer;">
+            Vaciar Carrito
+          </button>
+        </div>
+      </aside>
+    </div>
+  </main>
 
-  calcularTotalesCarrito();
-}
+  <footer>
+    <p>&copy; 2026 GameHub Store - Todos los derechos reservados.</p>
+  </footer>
 
-// Actualizar cantidad de una línea
-function actualizarCantidad(idProducto, nuevaCant) {
-  let cantidad = parseInt(nuevaCant);
-  let carrito = obtenerCarrito();
-  const item = carrito.find(p => p.id === idProducto);
-
-  if (!item) return;
-
-  if (isNaN(cantidad) || cantidad < 1) {
-    cantidad = 1;
-  } else if (cantidad > item.stock) {
-    alert(`La cantidad no puede superar el stock disponible (${item.stock}).`);
-    cantidad = item.stock;
-  }
-
-  item.cantidad = cantidad;
-  guardarCarrito(carrito);
-  renderizarCarrito();
-}
-
-// Eliminar un solo producto
-function eliminarDelCarrito(idProducto) {
-  let carrito = obtenerCarrito();
-  carrito = carrito.filter(p => p.id !== idProducto);
-  guardarCarrito(carrito);
-  renderizarCarrito();
-}
-
-// Vaciar carrito completo
-function vaciarCarrito() {
-  if (confirm("¿Estás seguro de que deseas vaciar el carrito?")) {
-    localStorage.removeItem("carrito_gamehub");
-    sessionStorage.removeItem("cupon_aplicado");
-    renderizarCarrito();
-  }
-}
-
-// Aplicar cupón de descuento
-function aplicarCuponDescuento() {
-  const inputCupon = document.getElementById("input-cupon");
-  const mensajeCupon = document.getElementById("mensaje-cupon");
-  if (!inputCupon || !mensajeCupon) return;
-
-  const codigo = inputCupon.value.trim().toUpperCase();
-  const cuponEncontrado = cupones.find(c => c.codigo === codigo && c.activo);
-
-  if (cuponEncontrado) {
-    sessionStorage.setItem("cupon_aplicado", JSON.stringify(cuponEncontrado));
-    mensajeCupon.style.color = "var(--color-acento)";
-    mensajeCupon.textContent = `¡Cupón ${cuponEncontrado.codigo} aplicado correctamente! (${cuponEncontrado.porcentaje}% de descuento)`;
-  } else {
-    sessionStorage.removeItem("cupon_aplicado");
-    mensajeCupon.style.color = "var(--color-error)";
-    mensajeCupon.textContent = "Cupón inválido, vencido o no existente.";
-  }
-
-  calcularTotalesCarrito();
-}
-
-// Cálculo general de subtotal, descuento y total
-function calcularTotalesCarrito() {
-  const carrito = obtenerCarrito();
-  const subtotal = carrito.reduce((acc, item) => acc + (item.precio * item.cantidad), 0);
-  let descuento = 0;
-
-  const cuponGuardado = JSON.parse(sessionStorage.getItem("cupon_aplicado"));
-  if (cuponGuardado) {
-    descuento = Math.round((subtotal * cuponGuardado.porcentaje) / 100);
-    if (descuento > cuponGuardado.tope) {
-      descuento = cuponGuardado.tope;
-    }
-  }
-
-  const total = Math.max(0, subtotal - descuento);
-
-  document.getElementById("resumen-subtotal").textContent = `$${subtotal.toLocaleString("es-CL")}`;
-  document.getElementById("resumen-descuento").textContent = `-$${descuento.toLocaleString("es-CL")}`;
-  document.getElementById("resumen-total").textContent = `$${total.toLocaleString("es-CL")}`;
-}
-
-// Inicializar vista al cargar la página
-document.addEventListener("DOMContentLoaded", () => {
-  renderizarCarrito();
-});
+  <script src="js/data.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/validation.js"></script>
+</body>
+</html>
