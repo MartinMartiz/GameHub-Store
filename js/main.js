@@ -6,7 +6,6 @@ function cargarProductosDestacados() {
   if (!contenedor) return;
 
   const destacados = productos.filter(p => p.destacado);
-
   contenedor.innerHTML = "";
 
   destacados.forEach(prod => {
@@ -27,6 +26,7 @@ function cargarProductosDestacados() {
       <p class="descripcion">${prod.descripcion}</p>
       ${precioHTML}
       <button class="boton-primario" ${estadoBoton} onclick="agregarAlCarrito(${prod.id})">${textoBoton}</button>
+      <a href="detalle.html?id=${prod.id}" style="display: block; margin-top: 0.5rem; text-align: center; color: var(--color-acento);">Ver detalle</a>
     `;
 
     contenedor.appendChild(tarjeta);
@@ -34,7 +34,126 @@ function cargarProductosDestacados() {
 }
 
 // ==========================================
-// 2. MANEJO DEL CARRITO DE COMPRAS
+// 2. CATÁLOGO Y FILTROS
+// ==========================================
+function poblarFiltroCategorias() {
+  const selectCat = document.getElementById("filtro-categoria");
+  if (!selectCat || selectCat.children.length > 1) return;
+
+  categorias.forEach(cat => {
+    const option = document.createElement("option");
+    option.value = cat.id;
+    option.textContent = cat.nombre;
+    selectCat.appendChild(option);
+  });
+}
+
+function renderizarCatalogo() {
+  const contenedor = document.getElementById("contenedor-catalogo");
+  if (!contenedor) return;
+
+  poblarFiltroCategorias();
+
+  const categoriaSel = document.getElementById("filtro-categoria").value;
+  const precioMin = parseFloat(document.getElementById("precio-min").value) || 0;
+  const precioMax = parseFloat(document.getElementById("precio-max").value) || Infinity;
+  const ordenSel = document.getElementById("filtro-orden").value;
+  const errorFiltro = document.getElementById("error-filtro-precio");
+
+  if (precioMin > precioMax) {
+    if (errorFiltro) errorFiltro.textContent = "El precio mínimo no puede ser mayor que el máximo.";
+    return;
+  } else if (errorFiltro) {
+    errorFiltro.textContent = "";
+  }
+
+  let filtrados = productos.filter(p => {
+    const coincideCat = categoriaSel === "todas" || p.categoria === categoriaSel;
+    const precioEfectivo = p.precioOferta ? p.precioOferta : p.precio;
+    const coincidePrecio = precioEfectivo >= precioMin && precioEfectivo <= precioMax;
+    return coincideCat && coincidePrecio;
+  });
+
+  filtrados.sort((a, b) => {
+    const pA = a.precioOferta ? a.precioOferta : a.precio;
+    const pB = b.precioOferta ? b.precioOferta : b.precio;
+    if (ordenSel === "precio-asc") return pA - pB;
+    if (ordenSel === "precio-desc") return pB - pA;
+    if (ordenSel === "nombre-asc") return a.nombre.localeCompare(b.nombre);
+    if (ordenSel === "nombre-desc") return b.nombre.localeCompare(a.nombre);
+    return 0;
+  });
+
+  contenedor.innerHTML = "";
+
+  if (filtrados.length === 0) {
+    contenedor.innerHTML = `<p style="grid-column: 1/-1; text-align: center;">No se encontraron productos.</p>`;
+    return;
+  }
+
+  filtrados.forEach(prod => {
+    const tarjeta = document.createElement("article");
+    tarjeta.classList.add("tarjeta-producto");
+
+    const sinStock = prod.stock === 0;
+    const textoBoton = sinStock ? "Agotado" : "Agregar al Carrito";
+    const estadoBoton = sinStock ? "disabled" : "";
+
+    const precioHTML = prod.precioOferta
+      ? `<p class="precio"><del style="color: #888; font-size: 0.85rem;">$${prod.precio.toLocaleString("es-CL")}</del> <strong>$${prod.precioOferta.toLocaleString("es-CL")}</strong></p>`
+      : `<p class="precio">$${prod.precio.toLocaleString("es-CL")}</p>`;
+
+    tarjeta.innerHTML = `
+      <img src="${prod.imagen}" alt="${prod.nombre}">
+      <h3>${prod.nombre}</h3>
+      <p class="descripcion">${prod.descripcion}</p>
+      ${precioHTML}
+      <button class="boton-primario" ${estadoBoton} onclick="agregarAlCarrito(${prod.id})">${textoBoton}</button>
+      <a href="detalle.html?id=${prod.id}" style="display: block; margin-top: 0.5rem; text-align: center; color: var(--color-acento);">Ver detalle</a>
+    `;
+
+    contenedor.appendChild(tarjeta);
+  });
+}
+
+// ==========================================
+// 3. DETALLE DE PRODUCTO
+// ==========================================
+function cargarDetalleProducto() {
+  const contenedor = document.getElementById("contenedor-detalle");
+  if (!contenedor) return;
+
+  const params = new URLSearchParams(window.location.search);
+  const idProd = parseInt(params.get("id"));
+  const prod = productos.find(p => p.id === idProd);
+
+  if (!prod) {
+    contenedor.innerHTML = "<p>Producto no encontrado.</p>";
+    return;
+  }
+
+  const precioHTML = prod.precioOferta
+    ? `<p><del style="color: #888;">$${prod.precio.toLocaleString("es-CL")}</del> <strong>$${prod.precioOferta.toLocaleString("es-CL")}</strong></p>`
+    : `<p><strong>$${prod.precio.toLocaleString("es-CL")}</strong></p>`;
+
+  contenedor.innerHTML = `
+    <div style="display: flex; gap: 2rem; flex-wrap: wrap;">
+      <img src="${prod.imagen}" alt="${prod.nombre}" style="width: 300px; max-width: 100%;">
+      <div>
+        <h2>${prod.nombre}</h2>
+        <p>${prod.descripcion}</p>
+        ${precioHTML}
+        <p>Stock disponible: ${prod.stock}</p>
+        <button class="boton-primario" ${prod.stock === 0 ? "disabled" : ""} onclick="agregarAlCarrito(${prod.id})">
+          ${prod.stock === 0 ? "Sin Stock" : "Agregar al Carrito"}
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+// ==========================================
+// 4. MANEJO DEL CARRITO DE COMPRAS
 // ==========================================
 function obtenerCarrito() {
   return JSON.parse(localStorage.getItem("carrito_gamehub")) || [];
@@ -54,13 +173,13 @@ function agregarAlCarrito(idProducto, cantidad = 1) {
   if (index !== -1) {
     const nuevaCantidad = carrito[index].cantidad + cantidad;
     if (nuevaCantidad > prod.stock) {
-      alert(`No puedes agregar más de ${prod.stock} unidades (Stock disponible).`);
+      alert(`No puedes agregar más de ${prod.stock} unidades.`);
       return;
     }
     carrito[index].cantidad = nuevaCantidad;
   } else {
     if (cantidad > prod.stock) {
-      alert(`No puedes agregar más de ${prod.stock} unidades (Stock disponible).`);
+      alert(`No puedes agregar más de ${prod.stock} unidades.`);
       return;
     }
     carrito.push({
@@ -209,9 +328,41 @@ function calcularTotalesCarrito() {
 }
 
 // ==========================================
-// 3. EVENTO DE CARGA PRINCIPAL
+// 5. MIS ÓRDENES
+// ==========================================
+function renderizarMisOrdenes() {
+  const contenedor = document.getElementById("contenedor-ordenes");
+  if (!contenedor) return;
+
+  const ordenes = JSON.parse(localStorage.getItem("ordenes_gamehub")) || [];
+
+  if (ordenes.length === 0) {
+    contenedor.innerHTML = "<p>No tienes órdenes registradas todavía.</p>";
+    return;
+  }
+
+  contenedor.innerHTML = "";
+  ordenes.forEach(ord => {
+    const elem = document.createElement("div");
+    elem.classList.add("tarjeta-producto");
+    elem.style.marginBottom = "1rem";
+    elem.innerHTML = `
+      <h3>Órden #${ord.id}</h3>
+      <p>Fecha: ${ord.fecha}</p>
+      <p>Total pagado: $${ord.total.toLocaleString("es-CL")}</p>
+      <p>Estado: <strong>${ord.estado}</strong></p>
+    `;
+    contenedor.appendChild(elem);
+  });
+}
+
+// ==========================================
+// 6. INICIALIZACIÓN POR VISTA
 // ==========================================
 document.addEventListener("DOMContentLoaded", () => {
   cargarProductosDestacados();
+  renderizarCatalogo();
+  cargarDetalleProducto();
   renderizarCarrito();
+  renderizarMisOrdenes();
 });
