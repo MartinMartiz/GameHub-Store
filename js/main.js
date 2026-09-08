@@ -21,8 +21,10 @@ function cargarProductosDestacados() {
       : `<p class="precio">$${prod.precio.toLocaleString("es-CL")}</p>`;
 
     tarjeta.innerHTML = `
-      <img src="${prod.imagen}" alt="${prod.nombre}">
-      <h3>${prod.nombre}</h3>
+      <a href="detalle.html?id=${prod.id}">
+        <img src="${prod.imagen}" alt="${prod.nombre}">
+        <h3>${prod.nombre}</h3>
+      </a>
       <p class="descripcion">${prod.descripcion}</p>
       ${precioHTML}
       <button class="boton-primario" ${estadoBoton} onclick="agregarAlCarrito(${prod.id})">${textoBoton}</button>
