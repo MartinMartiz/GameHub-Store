@@ -19,6 +19,6 @@ GameHub Store es una plataforma e-commerce orientada al público gamer. En esta 
 * Vistas principales: `index.html`, `catalogo.html`, `detalle.html`, `carrito.html`, `checkout.html`, `mis-ordenes.html`.
 
 ## Instrucciones de Ejecución
-1. Clonar el repositorio: `git clone <URL_DEL_REPOSITO>`
+1. Clonar el repositorio: `git clone https://github.com/MartinMartiz/GameHub-Store.git`
 2. Abrir la carpeta en Visual Studio Code.
 3. Ejecutar el proyecto mediante una extensión de servidor local (ej. Live Server) o abriendo directamente `index.html` en el navegador.
